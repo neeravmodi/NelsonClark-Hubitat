@@ -27,6 +27,7 @@ metadata {
 		capability "TemperatureMeasurement"
 		capability "Refresh"
 		capability "Configuration"
+		capability "RelativeHumidityMeasurement"
 
 		command "heatUp"
 		command "heatDown"
@@ -47,6 +48,7 @@ metadata {
 		attribute "minHeatingSetpoint", "number" 		//google alexa compatability	
 		attribute "maxHeatingSetpoint", "number" 		//google alexa compatability	
 		attribute "thermostatTemperatureSetpoint", "String"	//google
+		attribute "humidity", "number"
 
 		attribute "preEmergencyMode", "string"			//** When returning from an Emergency, we should maybe just go idle?
 		attribute "thermostatOperatingState", "string"		//** Already in the Thermostat attributes, does it need to be here?
@@ -77,6 +79,7 @@ def installed() {
 		sendEvent(name: "heatingSetpoint", value: 21.0, unit: "C") // 70°F
 		sendEvent(name: "coolingSetpoint", value: 24.5, unit: "C") // 76°F
 		sendEvent(name: "thermostatSetpoint", value: 21.0, unit: "C") // 70°F
+		sendEvent(name: "humidity", value: 100, unit: "%") // 100%RH
 	} else {
 		state.currentUnit = "F"
 		sendEvent(name: "minCoolTemp", value: 60, unit: "F") // 15.5°C
@@ -92,6 +95,7 @@ def installed() {
 		sendEvent(name: "heatingSetpoint", value: 70, unit: "F") // 21°C
 		sendEvent(name: "coolingSetpoint", value: 76, unit: "F") // 24.5°C
 		sendEvent(name: "thermostatSetpoint", value: 70, unit: "F") // 21°C
+		sendEvent(name: "humidity", value: 100, unit: "%") // 100%
 	}
 	sendEvent(name: "thermostatMode", value: "off")
 	sendEvent(name: "thermostatOperatingState", value: "idle")
@@ -165,6 +169,7 @@ def evaluateMode() {
 	
 	// Let's fetch all required thermostat settings
 	def temp = device.currentValue("temperature")
+	def hum = device.currentValue("humidity")
 	def heatingSetpoint = device.currentValue("heatingSetpoint")
 	def coolingSetpoint = device.currentValue("coolingSetpoint")
 	def threshold = device.currentValue("thermostatThreshold")
@@ -184,7 +189,7 @@ def evaluateMode() {
 	// If fetched maxInternal from user is higher than 180, set to 180
 	if (maxInterval > 180) maxinterval = 180
 	
-	logger("debug", "now=${now}, lastUpdate=${lastUpdate}, maxInterval=$maxInterval minutes, heatingSetpoint=$heatingSetpoint, coolingSetpoint=$coolingSetpoint, temp=$temp")
+    logger("debug", "now=${now}, lastUpdate=${lastUpdate}, maxInterval=$maxInterval minutes, heatingSetpoint=$heatingSetpoint, coolingSetpoint=$coolingSetpoint, temp=$temp, humid=$hum")
 
 	//convert maxUpdateInterval (in minutes) to milliseconds
 	maxIntervalMili = maxInterval * 60000
@@ -664,6 +669,22 @@ def setTemperature(value) {
 	runIn(2,'evaluateMode')
 }
 
+
+//************************************************************
+// setHumidity
+//     Set humidity directly
+//     Called from the manager app
+// Signature(s)
+//     setHumidity(value)
+// Parameters
+//     value : 
+// Returns
+//     None
+//************************************************************
+def setHumidity(value) {
+	logger("trace", "setHumidity($value) - sendEvent")
+	sendEvent(name:"humidity", value: value, unit: "%")
+}
 
 //************************************************************
 // heatUp

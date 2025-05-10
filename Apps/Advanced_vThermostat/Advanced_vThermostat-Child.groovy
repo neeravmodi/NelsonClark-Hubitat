@@ -204,10 +204,14 @@ def initialize(thermostatInstance) {
 
 	// Subscribe to the new sensor(s) and device
 	subscribe(sensors, "temperature", temperatureHandler)
+	subscribe(sensors, "humidity", humidityHandler)
 	subscribe(thermostat, "thermostatOperatingState", thermostatStateHandler)
 
 	// Update the temperature with these new sensors
 	updateTemperature()
+
+	// Update the humidity with these new sensors
+	updateHumidity()
 
 	// Schedule every minute the state of the controlled outlets
 	runEvery1Minute(setOutletsState)
@@ -271,6 +275,28 @@ def temperatureHandler(evt)
 
 
 //************************************************************
+// humidityHandler
+//     Handles a sensor humidity change event
+//     Do not call this directly, only used to handle events
+//
+// Signature(s)
+//     humidityHandler(evt)
+//
+// Parameters
+//     evt : passed by the event subsciption
+//
+// Returns
+//     None
+//
+//************************************************************
+def humidityHandler(evt)
+{
+	logger("debug", "Humidity changed to" + evt.doubleValue)
+	updateHumidity()
+}
+
+
+//************************************************************
 // updateTemperature
 //     Update device current temperature based on selected sensors
 //
@@ -298,8 +324,49 @@ def updateTemperature() {
 	
 	// Average the total divided by number of sensors
 	def avgTemp = total / count
-	thermostat.setTemperature(avgTemp)  //.toDouble().round(1) //If we want to round this to a single digit
+	//thermostat.setTemperature(avgTemp)  //.toDouble().round(1) //If we want to round this to a single digit
+	thermostat.setTemperature(avgTemp.toDouble().round(1))  //.toDouble().round(1) //If we want to round this to a single digit
 	return avgTemp
+}
+
+
+//************************************************************
+// updateHumidity
+//     Update device current humidity based on selected sensors
+//
+// Signature(s)
+//     updateHumidity()
+//
+// Parameters
+//     None
+//
+// Returns
+//     None
+//
+//************************************************************
+def updateHumidity() {
+	def total = 0;
+	def count = 0;
+	def thermostat=getThermostat()
+	
+	// Total all sensor used
+	for(sensor in sensors) {
+		if (sensor.currentValue("humidity")) {
+			total += sensor.currentValue("humidity")
+			logger("debug", "Sensor $sensor.label reported " + sensor.currentValue("humidity") + "% humidity")
+			count++
+		}    
+	}
+	
+	if (count) {
+		// Average the total divided by number of sensors
+		def avgHumid = total / count
+		thermostat.setHumidity(avgHumid.toDouble().round()) // rounded to no decimal places
+		return avgHumid
+	} else {
+		thermostat.setHumidity(null)
+		return null
+	}
 }
 
 
